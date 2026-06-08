@@ -1,0 +1,51 @@
+# =====================
+# Python cache
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# =====================
+# Virtual environment
+# =====================
+venv/
+env/
+ENV/
+
+# =====================
+# Django stuff
+# =====================
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# =====================
+# Environment variables (VERY IMPORTANT)
+# =====================
+.env
+.env.*
+
+# =====================
+# IDE / Editor
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =====================
+# OS files
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# Migrations (optional case)
+# =====================
+# ⚠️ Only uncomment if you want to reset migrations
+# */migrations/*.py
+# */migrations/*.pyc
+# !*/migrations/__init__.py
