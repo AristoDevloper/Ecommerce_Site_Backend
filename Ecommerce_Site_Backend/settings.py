@@ -14,11 +14,12 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -28,14 +29,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-fp0=zp1f*!6^2+8v0jesl)%n+xtfgq2jqhrijr2tmlpzilzd+a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG') == 'True'
+DEBUG = True
 
 ALLOWED_HOSTS = []
+
+CORS_ALLOWED_ORIGINS = [
+    # The frontend react app will run on this address during development
+    "http://localhost:5173",
+
+    # esewa and other payment gateways will send requests from these addresses
+    "https://esewa.com.np",
+    "https://esewasandbox.com",
+]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,11 +55,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'EcomApp',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -72,7 +86,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'Ecommerce_Site_Backend.wsgi.application'
+# WSGI_APPLICATION = 'Ecommerce_Site_Backend.wsgi.application'
+ASGI_APPLICATION = 'Ecommerce_Site_Backend.asgi.application'
 
 
 # Database
