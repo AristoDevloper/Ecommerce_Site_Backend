@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -33,14 +34,18 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-CORS_ALLOWED_ORIGINS = [
-    # The frontend react app will run on this address during development
-    "http://localhost:5173",
+# CORS_ALLOWED_ORIGINS = [
+#     # The frontend react app will run on this address during development
+#     # "http://localhost:5173",
 
-    # esewa and other payment gateways will send requests from these addresses
-    "https://esewa.com.np",
-    "https://esewasandbox.com",
-]
+#     # esewa and other payment gateways will send requests from these addresses
+#     # "https://esewa.com.np",
+#     # "https://esewasandbox.com",
+#     # just for testing purposes, we can allow all origins
+#     '*',
+# ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Application definition
@@ -56,6 +61,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'EcomApp',
     'corsheaders',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -145,3 +151,34 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+        
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        # JWT authentication is currently disabled for testing purposes, we can enable it later when we implement authentication
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,  # THIS SHOULD BE A SECURE KEY IN PRODUCTION AND NOT 
+    # BE EXPOSED IN THE CODE RATHER SHOULD BE LOADED FROM ENVIRONMENT VARIABLES
+    'VERIFYING_KEY': None,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    'JTI_CLAIM': 'jti',
+}
