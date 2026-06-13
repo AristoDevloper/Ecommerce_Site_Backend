@@ -32,7 +32,7 @@ SECRET_KEY = 'django-insecure-fp0=zp1f*!6^2+8v0jesl)%n+xtfgq2jqhrijr2tmlpzilzd+a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # CORS_ALLOWED_ORIGINS = [
 #     # The frontend react app will run on this address during development
@@ -154,15 +154,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
         
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-        # JWT authentication is currently disabled for testing purposes, we can enable it later when we implement authentication
-        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+
     ],
+
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
 }
 

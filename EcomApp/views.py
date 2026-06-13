@@ -1,3 +1,5 @@
+from sys import path
+
 from django.shortcuts import render
 from django.http import HttpResponse
 from rest_framework.response import Response
@@ -6,9 +8,21 @@ from rest_framework import viewsets
 from rest_framework import status
 from .models import *
 from .serializers import *
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .customjwtauthentication import CustomJWTAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
+def get_tokens_for_user(user):
+    if not user.is_active:
+        raise AuthenticationFailed('User is not active.')
 
+    refresh = RefreshToken.for_user(user)
+
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
 # Create your views here.
 def home(request):
@@ -28,14 +42,63 @@ class ProductList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [AllowAny]  # Allow anyone to create a user, but restrict other actions to authenticated users
+    authentication_classes = [CustomJWTAuthentication]  # Use custom JWT authentication for this viewset
 
 class UserRegistrationView(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            user = serializer.save()
+            tokens = get_tokens_for_user(user)
+            response = Response({
+                'user': serializer.data,
+                'message': 'User registered successfully',
+            }, status=status.HTTP_201_CREATED)
+            # Set the JWT access token in an HTTP-only cookie
+            response.set_cookie(
+                key='jwt_access_token',
+                value=tokens['access'],
+                httponly=True,
+                secure=True,  # Set to True in production for HTTPS
+                samesite='Lax', # Adjust as needed (e.g., 'Strict' or 'None')
+                path='api/'  
+            )
+            response.set_cookie(
+                key='jwt_refresh_token',
+                value=tokens['refresh'],
+                httponly=True,
+                secure=True,  # Set to True in production for HTTPS in development 
+                # you can set it to False as we are using http and will not matter for development
+                samesite='Lax',   # Adjust as needed (e.g., 'Strict' or 'None')
+                path='token/refresh/'  
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class TokenRefreshView(APIView):
+    def post(self, request):
+        refresh_token = request.COOKIES.get('jwt_refresh_token')
+
+        if not refresh_token:
+            return Response({'error': 'Refresh token not provided'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access_token = str(refresh.access_token)
+
+            response = Response({'access': new_access_token}, status=status.HTTP_200_OK)
+            response.set_cookie(
+                key='jwt_access_token',
+                value=new_access_token,
+                httponly=True,
+                secure=True,  # Set to True in production for HTTPS
+                samesite='Lax', # Adjust as needed (e.g., 'Strict' or 'None')
+                path='/api/'  
+            )
+            return response
+        except TokenError as err:
+            return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
