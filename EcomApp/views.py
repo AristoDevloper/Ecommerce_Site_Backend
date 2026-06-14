@@ -1,7 +1,4 @@
-from sys import path
-
 from django.shortcuts import render
-from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
@@ -12,6 +9,7 @@ from .customjwtauthentication import CustomJWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 
 def get_tokens_for_user(user):
     if not user.is_active:
@@ -25,8 +23,10 @@ def get_tokens_for_user(user):
     }
 
 # Create your views here.
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Allow anyone to access the home view
 def home(request):
-    return HttpResponse("Welcome to the E-commerce Site Backend!")
+    return Response({'message': 'Welcome to the E-commerce API!'}, status=status.HTTP_200_OK)
 
 
 class ProductList(APIView):
@@ -50,6 +50,7 @@ class UserViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]  # Use custom JWT authentication for this viewset
 
 class UserRegistrationView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to access the registration view
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -66,7 +67,7 @@ class UserRegistrationView(APIView):
                 httponly=True,
                 secure=True,  # Set to True in production for HTTPS
                 samesite='Lax', # Adjust as needed (e.g., 'Strict' or 'None')
-                path='api/'  
+                # path='api/'  
             )
             response.set_cookie(
                 key='jwt_refresh_token',
@@ -77,9 +78,11 @@ class UserRegistrationView(APIView):
                 samesite='Lax',   # Adjust as needed (e.g., 'Strict' or 'None')
                 path='token/refresh/'  
             )
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class TokenRefreshView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to access the token refresh view
     def post(self, request):
         refresh_token = request.COOKIES.get('jwt_refresh_token')
 
@@ -102,3 +105,4 @@ class TokenRefreshView(APIView):
             return response
         except TokenError as err:
             return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+

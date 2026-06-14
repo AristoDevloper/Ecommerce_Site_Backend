@@ -159,11 +159,12 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
 
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # custom jwt authentication to read tokens from http only cookies
+        'EcomApp.customjwtauthentication.CustomJWTAuthentication',
 
     ],
 
-    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
 }
 
 SIMPLE_JWT = {

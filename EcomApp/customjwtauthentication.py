@@ -1,8 +1,8 @@
-import rest_framework_simplejwt.authentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
-class CustomJWTAuthentication(rest_framework_simplejwt.authentication.JWTAuthentication):
+class CustomJWTAuthentication(JWTAuthentication):
     def authenticate(self,request):
         # get the tokens from http only cookie
         token = request.COOKIES.get('jwt_access_token')
