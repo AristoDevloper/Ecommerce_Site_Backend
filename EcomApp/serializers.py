@@ -16,6 +16,13 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user
+    
+class ProfileSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    name = serializers.CharField(source='display_name')
+    class Meta:
+        model = Profile
+        fields = ['id','user','address', 'phone_number', 'role' ,'name']
 
 class CartSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,7 +42,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     order_id = serializers.UUIDField(source='order.order_id', read_only=True)
-    seller = serializers.CharField(source='sold_items.name', read_only=True)
+    seller = serializers.CharField(source='seller.name', read_only=True)
     class Meta:
         model = OrderItem
         fields = ['order_id', 'product', 'quantity', 'price', 'seller']
@@ -59,6 +66,11 @@ class MessageSerializer(serializers.ModelSerializer):
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
+        fields = '__all__'
+
+class StoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
         fields = '__all__'
 
 class StoreProductSerializer(serializers.ModelSerializer):

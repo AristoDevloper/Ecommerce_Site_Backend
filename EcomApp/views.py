@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from .utils import get_tokens_for_user, send_email
 from rest_framework.decorators import permission_classes 
 from django.contrib.auth import authenticate
+from rest_framework.throttling import UserRateThrottle
 
 # Create your views here.
 @api_view(['GET'])  # Allow anyone to access the home view
@@ -40,13 +41,14 @@ class ProductList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+# User Registration, Login, Logout, and Password Reset Views
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny] 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            profile = Profile.objects.create(user=user)
             tokens = get_tokens_for_user(user)
             if user:
                 cart = Cart.objects.create(user=user)
@@ -78,6 +80,7 @@ class UserRegistrationView(APIView):
             return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+# View to handle JWT token refresh
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]  # Allow anyone to access the token refresh view
     
@@ -103,6 +106,7 @@ class TokenRefreshView(APIView):
         except TokenError as err:
             return Response({'error': 'Invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
 
+# View to handle user login
 class UserLoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -144,6 +148,7 @@ class UserLoginView(APIView):
         )
         return response
 
+# View to handle user logout
 class UserLogoutView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -152,7 +157,8 @@ class UserLogoutView(APIView):
         response.delete_cookie('jwt_access_token')
         response.delete_cookie('jwt_refresh_token')
         return response
-    
+
+# View to handle password reset request
 class PasswordResetRequestView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -171,6 +177,7 @@ class PasswordResetRequestView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
+# View to handle password reset confirmation
 class PasswordResetConfirmView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -185,7 +192,8 @@ class PasswordResetConfirmView(APIView):
             return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'User does not exist'}, status=status.HTTP_404_NOT_FOUND)
-        
+
+# View to handle user profile retrieval and update
 class UserProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -193,13 +201,28 @@ class UserProfileView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    def put(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+    def patch(self, request):
+        if not request.data:
+            return Response({'error': 'No data provided for update'}, status=status.HTTP_400_BAD_REQUEST)
+
+        address = request.data.get('address')
+        phone_number = request.data.get('phone_number')
+        name = request.data.get('display_name')
+        try: 
+            profile = Profile.objects.get(user=request.user)
+            if address:
+                profile.address = address
+            if phone_number:
+                profile.phone_number = phone_number
+            if name:
+                profile.display_name = name
+            profile.save()
+            serializer = ProfileSerializer(profile)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+        except Profile.DoesNotExist:
+            return Response({'error': 'Profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+# View to handle user profile retrieval and update
 class CartView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -236,9 +259,6 @@ class CartView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
-class CartDetailView(APIView):
-    authentication_classes = [CustomJWTAuthentication]
-
     def delete(self, request):
         cart = Cart.objects.get(user=request.user)
         product_id = request.data.get('product_id')
@@ -254,6 +274,7 @@ class CartDetailView(APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
+# View to handle order placement and retrieval
 class OrderView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -312,22 +333,21 @@ class OrderView(APIView):
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+# View to handle order details retrieval
 class OrderDetailView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
-    def get(self, request, order_id,product_id):
-        order = OrderItem.objects.select_related('order', 'product') \
-        .filter(order__order_id=order_id, product__product_id=product_id, order__user=request.user)
-        serializer = OrderItemSerializer(order)
+    def get(self, request, order_id, product_id):
+        order_item = get_object_or_404(
+            OrderItem.objects.select_related('order', 'product'),
+            order__order_id=order_id,
+            product__product_id=product_id,
+            order__user=request.user
+        )
+        serializer = OrderItemSerializer(order_item)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-        # order_item = OrderItem.objects.first()
-
-        # serializer = OrderItemSerializer(order_item)
-
-        # print(serializer.data)
-
-    
+# View to handle order status updates
 class orderStatusUpdateView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -342,7 +362,7 @@ class orderStatusUpdateView(APIView):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-        
+# View to handle product reviews  
 class ReviewView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -381,6 +401,7 @@ class ReviewView(APIView):
         except Review.DoesNotExist:
             return Response({'error': 'Review does not exist'}, status=status.HTTP_404_NOT_FOUND)
         
+# View to handle wishlist management
 class WishlistView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -413,7 +434,8 @@ class WishlistView(APIView):
                 return Response({'error': 'Product not found in wishlist'}, status=status.HTTP_404_NOT_FOUND)
         except Product.DoesNotExist:
             return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
-    
+
+# View to handle chat room creation and retrieval  
 class ChatRoomView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
@@ -452,5 +474,12 @@ class ChatRoomView(APIView):
                 "created" : False
             }
             )
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def storeview(request):
+    stores = Store.objects.all()
+    serializer = StoreSerializer(stores, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
