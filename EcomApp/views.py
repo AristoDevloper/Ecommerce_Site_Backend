@@ -19,6 +19,8 @@ from .utils import get_tokens_for_user, send_email
 from rest_framework.decorators import permission_classes 
 from django.contrib.auth import authenticate
 from rest_framework.throttling import UserRateThrottle
+from rest_framework import generics
+from rest_framework.pagination import LimitOffsetPagination
 
 # Create your views here.
 @api_view(['GET'])  # Allow anyone to access the home view
@@ -27,20 +29,25 @@ def home(request):
     return Response({'message': 'Welcome to the E-commerce API!'}, status=status.HTTP_200_OK)
 
 
-class ProductList(APIView):
-    permission_classes = [AllowAny]  # Allow anyone to access the product list view
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class ProductList(generics.ListCreateAPIView):
+    permission_classes = [AllowAny]
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
 
-    def post(self, request):
-        serializer = ProductSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+# class ProductList(APIView):
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         products = Product.objects.all()
+
+#         paginator = LimitOffsetPagination()
+#         result_page = paginator.paginate_queryset(products, request)
+
+#         serializer = ProductSerializer(result_page, many=True)
+
+#         return paginator.get_paginated_response(serializer.data)
+
 # User Registration, Login, Logout, and Password Reset Views
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny] 
@@ -66,14 +73,14 @@ class UserRegistrationView(APIView):
                 key='jwt_access_token',
                 value=tokens['access'],
                 httponly=True,
-                secure=True,  # Set to True in production for HTTPS
+                secure=False,  # Set to True in production for HTTPS
                 samesite='Lax' # Adjust as needed (e.g., 'Strict' or 'None') 
             )
             response.set_cookie(
                 key='jwt_refresh_token',
                 value=tokens['refresh'],
                 httponly=True,
-                secure=True,  # Set to True in production for HTTPS in development 
+                secure=False,  # Set to True in production for HTTPS in development 
                 # you can set it to False as we are using http and will not matter for development
                 samesite='Lax'   # Adjust as needed (e.g., 'Strict' or 'None')
             )
@@ -99,7 +106,7 @@ class TokenRefreshView(APIView):
                 key='jwt_access_token',
                 value=new_access_token,
                 httponly=True,
-                secure=True,  # Set to True in production for HTTPS
+                secure=False,  # Set to True in production for HTTPS
                 samesite='Lax' # Adjust as needed (e.g., 'Strict' or 'None')
             )
             return response
@@ -134,7 +141,7 @@ class UserLoginView(APIView):
             key='jwt_access_token',
             value=tokens['access'],
             httponly=True,
-            secure=True,  # Set to True in production for HTTPS
+            secure=False,  # Set to True in production for HTTPS
             samesite='Lax' # Adjust as needed (e.g., 'Strict' or 'None')
         )
 
@@ -142,7 +149,7 @@ class UserLoginView(APIView):
             key='jwt_refresh_token',
             value=tokens['refresh'],
             httponly=True,
-            secure=True,  # Set to True in production for HTTPS
+            secure=False,  # Set to True in production for HTTPS
             samesite='Lax'   # Adjust as needed (e.g., 'Strict' or 'None')
 
         )
@@ -176,6 +183,14 @@ class PasswordResetRequestView(APIView):
 
         except User.DoesNotExist:
             return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+class AuthenticationCheckView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if request.user.is_authenticated:
+            return Response({'message': 'User is authenticated'}, status=status.HTTP_200_OK)
+        return Response({'message': 'User is not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # View to handle password reset confirmation
 class PasswordResetConfirmView(APIView):

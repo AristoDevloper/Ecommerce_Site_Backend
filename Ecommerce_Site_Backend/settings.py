@@ -34,18 +34,19 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-# CORS_ALLOWED_ORIGINS = [
-#     # The frontend react app will run on this address during development
-#     # "http://localhost:5173",
+CORS_ALLOWED_ORIGINS = [
+    # The frontend react app will run on this address during development
+    "http://localhost:5173",
 
-#     # esewa and other payment gateways will send requests from these addresses
-#     # "https://esewa.com.np",
-#     # "https://esewasandbox.com",
-#     # just for testing purposes, we can allow all origins
-#     '*',
-# ]
+    # esewa and other payment gateways will send requests from these addresses
+    # "https://esewa.com.np",
+    # "https://esewasandbox.com",
+    # just for testing purposes, we can allow all origins
+    # '*',
+]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True # Allow cookies to be sent in cross-origin requests
+
 
 
 # Application definition
@@ -167,14 +168,18 @@ REST_FRAMEWORK = {
         
     ],
 
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'user': '100/day',  # Adjust the rate as needed
-        'anon': '50/day',  # Throttle for unauthenticated users
-    },
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'rest_framework.throttling.AnonRateThrottle',
+    # ],
+    
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'user': '100/day',  # Adjust the rate as needed
+    #     'anon': '50/day',  # Throttle for unauthenticated users
+    # },
+
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 6,  # Default page size for pagination
 
 
 }
