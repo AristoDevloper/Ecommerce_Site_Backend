@@ -483,14 +483,17 @@ class ChatRoomView(APIView):
             return Response(
                 {
                     "Robot_response" : f"Thank you for contacting {store.name}. How can we help you?",
-                    "conversation_id" : conversation.id
+                    "conversation_id" : conversation.id,
+                    "route" : f"/ws/chat/{conversation.id}/",
+                    "created" : True
                  }
                 )
         
         return Response(
             {
                 "conversation_id" : conversation.id,
-                "created" : False
+                "created" : False,
+                "route" : f"/ws/chat/{conversation.id}/"
             }
             )
 
