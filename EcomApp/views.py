@@ -118,19 +118,23 @@ class UserLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
+        email = request.data.get('email')
         password = request.data.get('password')
-        print('Login attempt for user:', username)
-        print('Password provided:', password )
+
+        if not email or not password:
+            return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.is_authenticated:
             return Response({'message': 'User is already logged in'}, status=status.HTTP_200_OK)
 
+        try:
+            user_obj = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = authenticate(request, username=username, password=password)
-        print('Authenticated user:', user)
+        user = authenticate(request, username=user_obj.username, password=password)
         if user is None:
-            return Response({'error': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
         
         tokens = get_tokens_for_user(user)
         response = Response({
