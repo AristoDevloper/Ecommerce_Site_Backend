@@ -20,4 +20,6 @@ urlpatterns = [
     path('review/', ReviewView.as_view(), name='add-review'),
     path("chat/",ChatRoomView.as_view(),name="chat-room"),
     path("store/",storeview,name="store-view"),
+    path("chat/rooms/",conversation_list,name="conversation-list"),
+    path("chat/rooms/<uuid:room_id>/messages/",ChatMessageView.as_view(),name="get-messages"),
 ]

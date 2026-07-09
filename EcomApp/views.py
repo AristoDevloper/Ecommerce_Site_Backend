@@ -34,6 +34,24 @@ class ProductList(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
+    def get_queryset(self):
+        queryset = Product.objects.select_related('category').prefetch_related('images').all()
+
+        category_name = self.request.query_params.get('category')
+        min_price = self.request.query_params.get('min_price')
+        max_price = self.request.query_params.get('max_price')
+
+        if category_name and category_name.lower() != 'all objects':
+            queryset = queryset.filter(category__name__iexact=category_name)
+
+        if min_price not in (None, ''):
+            queryset = queryset.filter(price__gte=min_price)
+
+        if max_price not in (None, ''):
+            queryset = queryset.filter(price__lte=max_price)
+
+        return queryset.order_by('id')
+
 
 # class ProductList(APIView):
 #     permission_classes = [AllowAny]
@@ -504,4 +522,27 @@ def storeview(request):
     serializer = StoreSerializer(stores, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+class ChatMessageView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
 
+    def get(self, request, room_id):
+        try:
+            conversation = Conversation.objects.get(uuid=room_id)
+        except Conversation.DoesNotExist:
+            return Response({'error': 'Conversation does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = 20  # Set the default limit for pagination
+        paginator.max_limit = 50  # Set the maximum limit for pagination
+        
+        fetched_messages = Message.objects.filter(conversation=conversation).order_by('created_at')
+        messages = paginator.paginate_queryset(fetched_messages, request)
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def conversation_list(request):
+    conversations = Conversation.objects.filter(user1=request.user) | Conversation.objects.filter(user2=request.user)
+    serializer = ConversationSerializer(conversations, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

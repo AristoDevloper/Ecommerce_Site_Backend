@@ -2,7 +2,15 @@ from rest_framework import serializers
 from .models import *
 from django.contrib.auth.models import User
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = '__all__'
+
 class ProductSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
+
     class Meta:
         model = Product
         fields = '__all__'
@@ -63,11 +71,6 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = '__all__'
 
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductImage
-        fields = '__all__'
-
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
@@ -81,4 +84,9 @@ class StoreProductSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
+        fields = '__all__'
+
+class ConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conversation
         fields = '__all__'
