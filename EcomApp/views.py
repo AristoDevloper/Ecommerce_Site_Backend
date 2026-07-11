@@ -16,11 +16,18 @@ from rest_framework.decorators import api_view
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
 from .utils import get_tokens_for_user, send_email
-from rest_framework.decorators import permission_classes 
+from rest_framework.decorators import permission_classes, authentication_classes
 from django.contrib.auth import authenticate
 from rest_framework.throttling import UserRateThrottle
 from rest_framework import generics
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
+from django.db.models import Q
+
+# Custom Pagination Class
+class CustomProductPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 # Create your views here.
 @api_view(['GET'])  # Allow anyone to access the home view
@@ -33,6 +40,7 @@ class ProductList(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    pagination_class = CustomProductPagination
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').prefetch_related('images').all()
@@ -40,6 +48,13 @@ class ProductList(generics.ListCreateAPIView):
         category_name = self.request.query_params.get('category')
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
+        search_query = self.request.query_params.get('search')
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) | 
+                Q(description__icontains=search_query)
+            )
 
         if category_name and category_name.lower() != 'all objects':
             queryset = queryset.filter(category__name__iexact=category_name)
@@ -51,6 +66,13 @@ class ProductList(generics.ListCreateAPIView):
             queryset = queryset.filter(price__lte=max_price)
 
         return queryset.order_by('id')
+
+
+class ProductDetailView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    queryset = Product.objects.select_related('category').prefetch_related('images').all()
+    serializer_class = ProductSerializer
+    lookup_field = 'product_id'
 
 
 # class ProductList(APIView):
@@ -266,7 +288,7 @@ class CartView(APIView):
     def get(self, request):
         cart = Cart.objects.get(user=request.user)
         serializer = CartSerializer(cart)
-        cart_items = CartItem.objects.filter(cart=cart)
+        cart_items = CartItem.objects.select_related('product').filter(cart=cart)
         cart_items_serializer = CartItemSerializer(cart_items, many=True)
         return Response({
             **serializer.data,
@@ -279,7 +301,7 @@ class CartView(APIView):
         quantity = request.data.get('quantity', 1)
 
         try:
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.get(product_id=product_id)
             cart_item, created = CartItem.objects.get_or_create(
                 cart=cart, 
                 product=product, 
@@ -289,7 +311,13 @@ class CartView(APIView):
                 cart_item.quantity += quantity
             else:
                 cart_item.quantity = quantity
-            cart_item.save()
+
+            if cart_item.quantity <= 0:
+                cart_item.delete()
+                return Response({'message': 'Product removed from cart'}, status=status.HTTP_200_OK)
+            else:
+                cart_item.save()
+
             if quantity < 0:
                 return Response({'message': 'Product quantity updated in cart'}, status=status.HTTP_200_OK)
             return Response({'message': 'Product added to cart'}, status=status.HTTP_200_OK)
@@ -301,7 +329,7 @@ class CartView(APIView):
         product_id = request.data.get('product_id')
 
         try:
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.get(product_id=product_id)
             cart_item = CartItem.objects.filter(cart=cart, product=product).first()
             if cart_item:
                 cart_item.delete()
@@ -317,7 +345,15 @@ class OrderView(APIView):
 
     def post(self, request):
         if not request.data.get('product_id'):
-            cart = Cart.objects.get(user=request.user)
+            cart_id = request.data.get('cart_id')
+            if cart_id:
+                try:
+                    cart = Cart.objects.get(user=request.user, cart_id=cart_id)
+                except Cart.DoesNotExist:
+                    return Response({'error': 'Invalid cart ID'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                cart = Cart.objects.get(user=request.user)
+                
             if not cart.items.exists():
                 return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -326,12 +362,14 @@ class OrderView(APIView):
              total_price=sum(item.product.price * item.quantity for item in cart.items.all())
             )
             for item in cart.items.all():
-                OrderItem.objects.create(
+                order_item = OrderItem.objects.create(
                     order=order,
                     product=item.product,
                     quantity=item.quantity,
                     price=item.product.price
                 )
+                item.product.stock -= item.quantity
+                item.product.save(update_fields=['stock'])
             
             cart.items.all().delete()  # Clear the cart after creating the order
             print('Order created from cart')
@@ -346,12 +384,15 @@ class OrderView(APIView):
                     user=request.user,
                     total_price=product.price * quantity,
                 )
-                OrderItem.objects.create(
+                order_item = OrderItem.objects.create(
                     order=order,
                     product=product,
                     quantity=quantity,
                     price=product.price
                 )
+                product.stock -= quantity
+                product.save(update_fields=['stock'])
+
                 print('Order created from product details page')
             except Product.DoesNotExist:
                 return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
@@ -366,8 +407,16 @@ class OrderView(APIView):
         return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
     
     def get(self, request):
-        orders = Order.objects.filter(user=request.user)
+        orders = Order.objects.filter(user=request.user).order_by('-created_at')
         serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class OrderFullDetailView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+
+    def get(self, request, order_id):
+        order = get_object_or_404(Order, order_id=order_id, user=request.user)
+        serializer = OrderFullSerializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 # View to handle order details retrieval
@@ -492,28 +541,37 @@ class ChatRoomView(APIView):
                status=status.HTTP_404_NOT_FOUND
                )
         
-        conversation, created = Conversation.objects.get_or_create(
-            user1=seller,
-            user2=request.user
-            )
+        # Check both orderings to avoid duplicate conversations
+        conversation = (
+            Conversation.objects.filter(user1=seller, user2=request.user).first() or
+            Conversation.objects.filter(user1=request.user, user2=seller).first()
+        )
+        
+        created = False
+        if not conversation:
+            conversation = Conversation.objects.create(user1=seller, user2=request.user)
+            created = True
+
+        room_name = str(conversation.uuid).replace('-', '')
         
         if created:
             return Response(
                 {
-                    "Robot_response" : f"Thank you for contacting {store.name}. How can we help you?",
-                    "conversation_id" : conversation.id,
-                    "route" : f"/ws/chat/{conversation.id}/",
-                    "created" : True
-                 }
-                )
+                    "robot_response": f"Thank you for contacting {store.name}. How can we help you?",
+                    "conversation_uuid": str(conversation.uuid),
+                    "room_name": room_name,
+                    "created": True
+                },
+                status=status.HTTP_201_CREATED
+            )
         
         return Response(
             {
-                "conversation_id" : conversation.id,
-                "created" : False,
-                "route" : f"/ws/chat/{conversation.id}/"
+                "conversation_uuid": str(conversation.uuid),
+                "room_name": room_name,
+                "created": False
             }
-            )
+        )
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -541,8 +599,12 @@ class ChatMessageView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
+@authentication_classes([CustomJWTAuthentication])
 @permission_classes([IsAuthenticated])
 def conversation_list(request):
-    conversations = Conversation.objects.filter(user1=request.user) | Conversation.objects.filter(user2=request.user)
+    conversations = (
+        Conversation.objects.filter(user1=request.user) | 
+        Conversation.objects.filter(user2=request.user)
+    ).order_by('-created_at').distinct()
     serializer = ConversationSerializer(conversations, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
