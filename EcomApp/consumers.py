@@ -1,21 +1,36 @@
-from channels.layers import get_channel_layer
+from channels.generic.websocket import WebsocketConsumer
 from asgiref.sync import async_to_sync
 from .models import Message, Conversation
-from channels.generic.websocket import WebsocketConsumer
 import json
 from django.contrib.auth.models import AnonymousUser
 
+
 class ChatConsumer(WebsocketConsumer):
     def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_id = self.scope['url_route']['kwargs']['room_id']
-        self.room_group_name = f'chat_{self.room_name}'
+        self.room_group_name = f'chat_{self.room_id}'
 
-        if not self.scope.get('user') or isinstance(self.scope['user'], AnonymousUser) or not self.scope['user'].is_authenticated:
-            self.close()
+        user = self.scope.get('user')
+
+        # Reject unauthenticated users
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
             return
 
-        # Join room group 
+        # Check if conversation exists and user is a participant
+        try:
+            conversation = Conversation.objects.get(uuid=self.room_id)
+        except Conversation.DoesNotExist:
+            self.close(code=4004)
+            return
+
+        if conversation.user1 != user and conversation.user2 != user:
+            self.close(code=4003)
+            return
+
+        self.conversation = conversation
+
+        # Join room group
         async_to_sync(self.channel_layer.group_add)(
             self.room_group_name,
             self.channel_name
@@ -24,43 +39,66 @@ class ChatConsumer(WebsocketConsumer):
         self.accept()
 
     def disconnect(self, close_code):
-        # Leave room group
-        async_to_sync(self.channel_layer.group_discard)(
-            self.room_group_name,
-            self.channel_name
-        )    
+        if hasattr(self, 'room_group_name'):
+            async_to_sync(self.channel_layer.group_discard)(
+                self.room_group_name,
+                self.channel_name
+            )
 
     def receive(self, text_data):
-        if not self.scope.get('user') or isinstance(self.scope['user'], AnonymousUser) or not self.scope['user'].is_authenticated:
-            self.close()
+        user = self.scope.get('user')
+
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
             return
 
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        # Check if conversation exists and user is a participant
+        try:
+            conversation = Conversation.objects.get(uuid=self.room_id)
+        except Conversation.DoesNotExist:
+            self.close(code=4004)
+            return
+
+        if conversation.user1 != user and conversation.user2 != user:
+            self.close(code=4003)
+            return
+
+        try:
+            text_data_json = json.loads(text_data)
+        except json.JSONDecodeError:
+            return
+
+        message_content = text_data_json.get('message', '').strip()
+
+        if not message_content:
+            return
 
         # Save the message to the database
-        user = self.scope['user']
-        self.save_message(user, message)
+        saved_message = Message.objects.create(
+            conversation=self.conversation,
+            sender=user,
+            content=message_content
+        )
 
-        # sending mmesage to room group
+        # Broadcast to room group with sender info and timestamp
         async_to_sync(self.channel_layer.group_send)(
             self.room_group_name,
             {
                 'type': 'chat_message',
-                'message': message
+                'message': message_content,
+                'sender_id': user.id,
+                'sender_username': user.username,
+                'message_id': saved_message.id,
+                'created_at': saved_message.created_at.isoformat(),
             }
         )
 
     def chat_message(self, event):
-        message = event['message']
-
         # Send message to WebSocket
         self.send(text_data=json.dumps({
-            'message': message
+            'message': event['message'],
+            'sender_id': event['sender_id'],
+            'sender_username': event['sender_username'],
+            'message_id': event['message_id'],
+            'created_at': event['created_at'],
         }))
-
-
-    def save_message(self, user, message):
-        # Save the message to the database
-        conversation, created = Conversation.objects.get_or_create(uuid=self.room_id)
-        Message.objects.create(conversation=conversation, sender=user, content=message)
