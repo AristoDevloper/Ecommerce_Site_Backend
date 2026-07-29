@@ -36,11 +36,21 @@ def home(request):
     return Response({'message': 'Welcome to the E-commerce API!'}, status=status.HTTP_200_OK)
 
 
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+
 class ProductList(generics.ListCreateAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     pagination_class = CustomProductPagination
+
+    def perform_create(self, serializer):
+        product = serializer.save()
+        # If the user is authenticated and has a store, link the product
+        if self.request.user.is_authenticated:
+            store = Store.objects.filter(owner=self.request.user).first()
+            if store:
+                StoreProduct.objects.create(store=store, product=product)
 
     def get_queryset(self):
         queryset = Product.objects.select_related('category').prefetch_related('images').all()
@@ -49,6 +59,10 @@ class ProductList(generics.ListCreateAPIView):
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         search_query = self.request.query_params.get('search')
+        store_id = self.request.query_params.get('store_id')
+
+        if store_id:
+            queryset = queryset.filter(storeproduct__store__store_id=store_id)
 
         if search_query:
             queryset = queryset.filter(
@@ -233,7 +247,15 @@ class AuthenticationCheckView(APIView):
 
     def post(self, request):
         if request.user.is_authenticated:
-            return Response({'message': 'User is authenticated'}, status=status.HTTP_200_OK)
+            role = 'customer'
+            if hasattr(request.user, 'profile'):
+                role = request.user.profile.role
+            return Response({
+                'message': 'User is authenticated',
+                'role': role,
+                'is_staff': request.user.is_staff,
+                'is_superuser': request.user.is_superuser
+            }, status=status.HTTP_200_OK)
         return Response({'message': 'User is not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # View to handle password reset confirmation
