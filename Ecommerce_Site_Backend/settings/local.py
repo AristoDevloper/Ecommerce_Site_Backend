@@ -15,12 +15,8 @@ CORS_ALLOW_CREDENTIALS = True
 # For local, you might be using SQLite or a local Postgres. Let's use SQLite as fallback or the one from env
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB-NAME', 'postgres'),
-        'USER': os.getenv('DB-USER', 'postgres'),
-        'PASSWORD': os.getenv('DB-PASSWORD', 'postgres'),
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

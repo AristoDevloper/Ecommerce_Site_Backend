@@ -5,14 +5,18 @@ from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
 # SEND EMAIL FUNCTION FOR ALL TYPES OF EMAILS LIKE VERIFICATION, PASSWORD RESET, ORDER CONFIRMATION, ETC.
 def send_email(subject,message,recipient_list):
-    send_mail(
-        subject,
-        message,
-        settings.EMAIL_HOST_USER,
-        recipient_list,
-        fail_silently=False,
-    )
-    return True
+    try:
+        from_email = getattr(settings, 'EMAIL_HOST_USER', None) or 'noreply@ecommerce.com'
+        send_mail(
+            subject,
+            message,
+            from_email,
+            recipient_list,
+            fail_silently=True,
+        )
+        return True
+    except Exception:
+        return False
 
 # Utility function to generate JWT tokens for a user
 def get_tokens_for_user(user):

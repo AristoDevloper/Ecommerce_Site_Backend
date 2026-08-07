@@ -19,7 +19,8 @@ class UserRegistrationView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            profile = Profile.objects.create(user=user)
+            full_name = f"{user.first_name} {user.last_name}".strip()
+            profile = Profile.objects.create(user=user, display_name=full_name if full_name else user.username)
             tokens = get_tokens_for_user(user)
             if user:
                 cart = Cart.objects.create(user=user)
