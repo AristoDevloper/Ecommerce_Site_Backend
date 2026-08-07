@@ -16,7 +16,7 @@ from EcomApp.routing import websocket_urlpatterns
 from EcomApp.middleware import JWTAuthMiddlewareStack
 
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Ecommerce_Site_Backend.settings.local')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Ecommerce_Site_Backend.settings.production')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
