@@ -14,3 +14,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Ecommerce_Site_Backend.settings
 from django.core.wsgi import get_wsgi_application
 
 application = get_wsgi_application()
+app = application
