@@ -1,52 +1,92 @@
-﻿from .base import *
+from .base import *
 import os
 import dj_database_url
 
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-# Example: should be loaded from env
+# Allowed Hosts configuration
 ALLOWED_HOSTS = ['*']
 
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
-CORS_ALLOW_CREDENTIALS = True
+# SSL and Reverse Proxy Settings (Crucial for Vercel behind HTTPS proxy)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
-
-# In production, use a real email backend
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-
-# Channel layer configuration for chat app
-REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
-REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-REDIS_DB = os.getenv('REDIS_DB', '0')
-REDIS_SOCKET_TIMEOUT = os.getenv('REDIS_SOCKET_TIMEOUT', '5')
-REDIS_SOCKET_CONNECT_TIMEOUT = os.getenv('REDIS_SOCKET_CONNECT_TIMEOUT', '5')
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [
-                f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}?socket_timeout={REDIS_SOCKET_TIMEOUT}&socket_connect_timeout={REDIS_SOCKET_CONNECT_TIMEOUT}'
-            ],
-        },
-    }
-}
-
-# Security settings for production
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
+# Cookie and Session Settings for Vercel HTTPS and Admin login
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
+
+# CSRF Trusted Origins for Vercel deployment
+raw_trusted = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if raw_trusted:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_trusted.split(',') if origin.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://*.vercel.app',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+    ]
+
+# CORS Settings
+cors_origins_env = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if cors_origins_env:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_env.split(',') if origin.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ]
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+CORS_ALLOW_CREDENTIALS = True
+
+# Database configuration
+db_url = os.getenv('DATABASE_URL')
+if db_url:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=db_url,
+            conn_max_age=600,
+            ssl_require=False
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# Email Backend configuration
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
+# Redis Channel Layers (Fallback to InMemory if Redis URL not provided)
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
+
+# Additional Security settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'

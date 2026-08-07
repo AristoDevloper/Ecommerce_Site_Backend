@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 
 import os
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Ecommerce_Site_Backend.settings.local')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Ecommerce_Site_Backend.settings.production')
 
 from django.core.wsgi import get_wsgi_application
 
