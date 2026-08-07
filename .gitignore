@@ -21,6 +21,8 @@ ENV/
 db.sqlite3
 media/
 staticfiles/
+!staticfiles/
+!staticfiles/.gitkeep
 
 # =====================
 # Environment variables (VERY IMPORTANT)
