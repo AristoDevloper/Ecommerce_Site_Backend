@@ -5,7 +5,7 @@ import dj_database_url
 DEBUG = False
 
 # Example: should be loaded from env
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', ["ecommercesitebackend02-aristodev-team.vercel.app","ecommercesitebackend02.vercel.app",'ecommercesitebackend02-gtmb1xvrg-aristodev-team.vercel.app',"ecommercesitebackend02-hsr81i725-aristodev-team.vercel.app"]).split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', ["ecommercesitebackend02-oduzx3bad-aristodev-team.vercel.app","ecommercesitebackend02-aristodev-team.vercel.app","ecommercesitebackend02.vercel.app",'ecommercesitebackend02-gtmb1xvrg-aristodev-team.vercel.app',"ecommercesitebackend02-hsr81i725-aristodev-team.vercel.app"]).split(',')
 
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 CORS_ALLOW_CREDENTIALS = True
