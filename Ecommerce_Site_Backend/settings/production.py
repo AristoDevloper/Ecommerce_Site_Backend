@@ -1,5 +1,6 @@
 ﻿from .base import *
 import os
+import dj_database_url
 
 DEBUG = False
 
@@ -10,14 +11,11 @@ CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB-NAME'),
-        'USER': os.getenv('DB-USER'),
-        'PASSWORD': os.getenv('DB-PASSWORD'),
-        'HOST': os.getenv('DB-HOST', 'localhost'),
-        'PORT': os.getenv('DB-PORT', '5432'),
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
 # In production, use a real email backend
