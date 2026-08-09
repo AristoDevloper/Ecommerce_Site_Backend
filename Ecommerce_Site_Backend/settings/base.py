@@ -16,8 +16,6 @@ SIGNING_KEY = os.getenv('SIGNING_KEY', 'default-signing-key-for-dev')
 
 # Application definition
 INSTALLED_APPS = [
-    'daphne',
-    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,8 +56,7 @@ TEMPLATES = [
     },
 ]
 
-ASGI_APPLICATION = 'Ecommerce_Site_Backend.asgi.application'
-# WSGI_APPLICATION = 'Ecommerce_Site_Backend.wsgi.application'
+WSGI_APPLICATION = 'Ecommerce_Site_Backend.wsgi.application'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
