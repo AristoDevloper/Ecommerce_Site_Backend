@@ -1,10 +1,10 @@
 # Ecommerce Platform - Backend
 
-This is the backend API and websocket server for the Ecommerce platform, built with **Django**, **Django REST Framework (DRF)**, and **Django Channels**.
+This is the backend API for the Ecommerce platform, built with **Django** and **Django REST Framework (DRF)**.
 
 ## Architecture & Core Technologies
 - **Django 5 & DRF:** The core web framework and API engine.
-- **Django Channels & Daphne:** Provides ASGI support for real-time WebSocket connections (used for the live messaging system).
+- **Django & DRF:** Core web framework and API engine.
 - **SimpleJWT:** Handles authentication via stateless JWT tokens. Custom configured to send tokens in `HttpOnly` cookies for enhanced XSS protection.
 - **SQLite / PostgreSQL:** (Default configured database)
 
@@ -12,15 +12,10 @@ This is the backend API and websocket server for the Ecommerce platform, built w
 
 ### 1. Authentication & Security
 - **HttpOnly Cookies:** Access and refresh tokens are managed strictly via cookies. A custom `CustomJWTAuthentication` class verifies these cookies for protected API endpoints.
-- **WebSocket Auth:** A custom `JWTAuthMiddlewareStack` in `middleware.py` intercepts WebSocket connection requests and authenticates users using the same `HttpOnly` cookie strategy.
+- **Authentication:** JWT-based authentication via `SimpleJWT`, with a custom `CustomJWTAuthentication` class used for API endpoints.
 
-### 2. Live Conversations (Real-Time Chat)
-- **WebSockets:** Built using Django Channels.
-- Consumers (`consumers.py`) manage connections using `AsyncWebsocketConsumer`. They verify that:
-  - The conversation UUID actually exists.
-  - The connecting user is a participant (buyer or seller).
-- Messages are broadcasted in real-time to specific `room_groups` and saved sequentially into the database.
-- A REST API (`ChatRoomView` and `ChatMessageView`) is used to fetch historical message data and generate new rooms between a user and a store.
+### 2. Conversations (Chat API)
+- The backend exposes REST endpoints for conversation and message history. Real-time WebSocket-based features were removed; consumers and WebSocket routing are no longer present.
 
 ### 3. Shopping Flow
 - **Cart & Wishlist:** Fully modeled in `models.py`. API views handle adding/removing products.
@@ -42,12 +37,8 @@ This is the backend API and websocket server for the Ecommerce platform, built w
    python manage.py migrate
    ```
 
-3. **Run the Server (ASGI for WebSockets):**
-   *Do not use the standard runserver if testing WebSockets.* Use Daphne:
-   ```bash
-   daphne -p 8000 Ecommerce_Site_Backend.asgi:application
-   ```
-   Or standard runserver (for API only):
+3. **Run the Server:**
+   Use the standard Django runserver for local API testing:
    ```bash
    python manage.py runserver
    ```
@@ -58,4 +49,4 @@ This is the backend API and websocket server for the Ecommerce platform, built w
 - `/cart/` / `/wishlist/` - User Lists
 - `/order/` - Order Management
 - `/chat/rooms/` - Chat system
-- `ws://localhost:8000/ws/chat/<room_name>/<uuid>/` - WebSocket Connection
+-- WebSocket endpoints removed in this backend.
