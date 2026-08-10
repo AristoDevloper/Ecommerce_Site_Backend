@@ -38,14 +38,14 @@ class UserRegistrationView(APIView):
                 value=tokens['access'],
                 httponly=True,
                 secure=True,
-                samesite='Lax'
+                samesite='None'
             )
             response.set_cookie(
                 key='jwt_refresh_token',
                 value=tokens['refresh'],
                 httponly=True,
                 secure=True,
-                samesite='Lax'
+                samesite='None'
             )
             return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -66,7 +66,7 @@ class TokenRefreshView(APIView):
                 value=new_access_token,
                 httponly=True,
                 secure=True,
-                samesite='Lax'
+                samesite='None'
             )
             return response
         except TokenError:
@@ -104,14 +104,14 @@ class UserLoginView(APIView):
             value=tokens['access'],
             httponly=True,
             secure=True,
-            samesite='Lax'
+            samesite='None'
         )
         response.set_cookie(
             key='jwt_refresh_token',
             value=tokens['refresh'],
             httponly=True,
             secure=True,
-            samesite='Lax'
+            samesite='None'
         )
         return response
 
