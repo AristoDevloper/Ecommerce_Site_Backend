@@ -116,12 +116,20 @@ class UserLoginView(APIView):
         return response
 
 class UserLogoutView(APIView):
-    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         response = Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
-        response.delete_cookie('jwt_access_token')
-        response.delete_cookie('jwt_refresh_token')
+        refresh_token = request.COOKIES.get('jwt_refresh_token')
+        if refresh_token:
+            try:
+                refresh = RefreshToken(refresh_token)
+                refresh.blacklist()
+                response.delete_cookie('jwt_access_token')
+                response.delete_cookie('jwt_refresh_token')
+            except TokenError:
+                return Response({'error': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+
         return response
 
 class PasswordResetRequestView(APIView):
