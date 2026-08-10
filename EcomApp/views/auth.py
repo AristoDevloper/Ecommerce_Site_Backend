@@ -120,15 +120,38 @@ class UserLogoutView(APIView):
 
     def post(self, request):
         response = Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
+        
+        cookie_keys = ['jwt_access_token', 'jwt_refresh_token']
+        for key in cookie_keys:
+            response.set_cookie(
+                key=key,
+                value='',
+                max_age=0,
+                expires='Thu, 01 Jan 1970 00:00:00 GMT',
+                path='/',
+                httponly=True,
+                secure=True,
+                samesite='None'
+            )
+            response.set_cookie(
+                key=key,
+                value='',
+                max_age=0,
+                expires='Thu, 01 Jan 1970 00:00:00 GMT',
+                path='/',
+                httponly=True,
+                secure=False,
+                samesite='Lax'
+            )
+            response.delete_cookie(key, path='/')
+
         refresh_token = request.COOKIES.get('jwt_refresh_token')
         if refresh_token:
             try:
                 refresh = RefreshToken(refresh_token)
                 refresh.blacklist()
-                response.delete_cookie('jwt_access_token')
-                response.delete_cookie('jwt_refresh_token')
             except TokenError:
-                return Response({'error': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+                pass
 
         return response
 

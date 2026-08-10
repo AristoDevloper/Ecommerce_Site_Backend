@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'EcomApp',
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [

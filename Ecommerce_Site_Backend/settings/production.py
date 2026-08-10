@@ -39,6 +39,7 @@ else:
         'http://localhost:5173',
         'http://127.0.0.1:5173',
     ]
+
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 CORS_ALLOW_CREDENTIALS = True
 
