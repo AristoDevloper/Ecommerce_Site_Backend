@@ -140,8 +140,8 @@ class UserLogoutView(APIView):
                 expires='Thu, 01 Jan 1970 00:00:00 GMT',
                 path='/',
                 httponly=True,
-                secure=False,
-                samesite='Lax'
+                secure=True,
+                samesite='None'
             )
             response.delete_cookie(key, path='/')
 
