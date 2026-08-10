@@ -37,14 +37,14 @@ class UserRegistrationView(APIView):
                 key='jwt_access_token',
                 value=tokens['access'],
                 httponly=True,
-                secure=False,
+                secure=True,
                 samesite='Lax'
             )
             response.set_cookie(
                 key='jwt_refresh_token',
                 value=tokens['refresh'],
                 httponly=True,
-                secure=False,
+                secure=True,
                 samesite='Lax'
             )
             return response
@@ -65,7 +65,7 @@ class TokenRefreshView(APIView):
                 key='jwt_access_token',
                 value=new_access_token,
                 httponly=True,
-                secure=False,
+                secure=True,
                 samesite='Lax'
             )
             return response
@@ -103,14 +103,14 @@ class UserLoginView(APIView):
             key='jwt_access_token',
             value=tokens['access'],
             httponly=True,
-            secure=False,
+            secure=True,
             samesite='Lax'
         )
         response.set_cookie(
             key='jwt_refresh_token',
             value=tokens['refresh'],
             httponly=True,
-            secure=False,
+            secure=True,
             samesite='Lax'
         )
         return response
