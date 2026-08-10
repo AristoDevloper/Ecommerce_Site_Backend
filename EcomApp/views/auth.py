@@ -140,7 +140,7 @@ class PasswordResetRequestView(APIView):
 class AuthenticationCheckView(APIView):
     permission_classes = [AllowAny]
 
-    def post(self, request):
+    def _auth_check_response(self, request):
         if request.user.is_authenticated:
             role = 'customer'
             if hasattr(request.user, 'profile'):
@@ -152,6 +152,12 @@ class AuthenticationCheckView(APIView):
                 'is_superuser': request.user.is_superuser
             }, status=status.HTTP_200_OK)
         return Response({'message': 'User is not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def post(self, request):
+        return self._auth_check_response(request)
+
+    def get(self, request):
+        return self._auth_check_response(request)
 
 class PasswordResetConfirmView(APIView):
     authentication_classes = [CustomJWTAuthentication]
