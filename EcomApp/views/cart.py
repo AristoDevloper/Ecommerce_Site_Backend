@@ -10,7 +10,7 @@ class CartView(APIView):
     authentication_classes = [CustomJWTAuthentication]
 
     def get(self, request):
-        cart = Cart.objects.get(user=request.user)
+        cart, created = Cart.objects.get_or_create(user=request.user)
         serializer = CartSerializer(cart)
         cart_items = CartItem.objects.select_related('product').filter(cart=cart)
         cart_items_serializer = CartItemSerializer(cart_items, many=True)
@@ -20,7 +20,7 @@ class CartView(APIView):
         }, status=status.HTTP_200_OK)
 
     def post(self, request):
-        cart = Cart.objects.get(user=request.user)
+        cart, created = Cart.objects.get_or_create(user=request.user)
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity', 1)
 

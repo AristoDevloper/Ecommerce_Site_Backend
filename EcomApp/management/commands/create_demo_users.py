@@ -27,16 +27,6 @@ class Command(BaseCommand):
                 'is_staff': False,
                 'is_superuser': False,
             },
-            {
-                'email': 'admin@demo.com',
-                'username': 'admin_demo',
-                'password': 'password123',
-                'first_name': 'Demo',
-                'last_name': 'Admin',
-                'role': 'admin',
-                'is_staff': True,
-                'is_superuser': True,
-            },
         ]
 
         for account in demo_accounts:
